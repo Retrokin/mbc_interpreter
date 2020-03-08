@@ -10,12 +10,13 @@ Specifications:
 	Byte by Byte reader
 	Stores code in chunks
 	Table 0 are block values
+	Table 255 are used for function arguments
 	Ids 1-9,100-255 - Interpreter only variables
-	Ids 10-99 - lua accessible variables; ONLY USE IF LUA SHOULD ACCESS OR SLOWDOWNS WILL OCCUR!
+	Ids 10-99 - lua accessible variables; ONLY USE IF LUA SHOULD ACCESS OR SLOWDOWNS MAY OCCUR!
 
-Registers:
-	254 - Block pointers (table); starts at 
-	255 - Current block offset (byte)
+Special Tables:
+	0 - Block values
+	255 - Function arguments
 
 Variable Types:
 	0 - nil - 0 bytes
@@ -28,6 +29,7 @@ Variable Types:
 	7 - true boolean - 0 bytes
 	8 - byte - 1 byte
 	9 - interger - 2 bytes
+	A - tableref - 1 byte - table from self.var
 	
 OPCODES:
 	NULL
@@ -42,20 +44,15 @@ OPCODES:
 			6 - IFEQUAL
 			7 - IFLESS
 			8 - IFLESSEQUAL
-			9 - TABLESET
+			9 - SETTABLE
 	LUANAME byte:table byte:id string:name					--renames a lua variable's key to name .. "_" .. id
-	IF byte:table byte:id byte:check byte:type anytype:value interger:len
-		Checks:
-			0 - ELSE
-			1 - IFEQUAL
-			2 - IFLESS
-			3 - IFNOTEQUAL
-			4 - IFNOTLESS
-	FUNC byte:table byte:id byte:result_table byte:result_id byte:arg_amount [byte:type] [anytype:value] [byte:type] [anytype:value]
-	BLOCKSTART
+	FUNC byte:table byte:id byte:result_table byte:result_id
+	IF byte:table byte:id interger:true_jumpto interger:false_jumpto
+	BLOCKSTART byte:offset
 	BLOCKEND
-	BLOCKFORWARD
+	BLOCKFORWARD byte:
 	BLOCKBACK
 	JUMPSTORE
 	JUMPBACK
 	JUMPTO interger:line
+	DEBUGPRINT byte:table byte:id				--printh the value of the variable
