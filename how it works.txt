@@ -1,0 +1,61 @@
+Interpreter stores code as a table of numbers.
+
+Combining lua and interpreter code:
+	any variables ending with "_#" can be accessed from the code; example: game.player_10.vx_10
+	/\ Can only store variables 10 to 99, anything beyond that is only accessible to the interpreter
+
+Specifications:
+	256 values usable from table
+	255 tables that can be assigned to anything
+	Byte by Byte reader
+	Stores code in chunks
+	Table 0 are block values
+	Ids 1-9,100-255 - Interpreter only variables
+	Ids 10-99 - lua accessible variables; ONLY USE IF LUA SHOULD ACCESS OR SLOWDOWNS WILL OCCUR!
+
+Registers:
+	254 - Block pointers (table); starts at 
+	255 - Current block offset (byte)
+
+Variable Types:
+	0 - nil - 0 bytes
+	1 - variable - 2 bytes; 1 for table and 1 for id
+	2 - table - 0 bytes; technically one for declaring type; creates an empty table
+	3 - function - can only be set in from lua
+	4 - number - 4 bytes 				--is a value that is only a decimal
+	5 - string - length + 1 byte (last byte is null)
+	6 - false boolean - 0 byte
+	7 - true boolean - 0 bytes
+	8 - byte - 1 byte
+	9 - interger - 2 bytes
+	
+OPCODES:
+	NULL
+	VAR byte:table byte:id byte:operation byte:type anytype:value 				--if table is 0 (registers) then id values 201+ are function specific, and change based on which function the code is within
+	Operations:
+			0 - SET
+			1 - ADD
+			2 - SUB
+			3 - MUL
+			4 - DIV
+			5 - CONCAT 				--combines two strings together
+			6 - IFEQUAL
+			7 - IFLESS
+			8 - IFLESSEQUAL
+			9 - TABLESET
+	LUANAME byte:table byte:id string:name					--renames a lua variable's key to name .. "_" .. id
+	IF byte:table byte:id byte:check byte:type anytype:value interger:len
+		Checks:
+			0 - ELSE
+			1 - IFEQUAL
+			2 - IFLESS
+			3 - IFNOTEQUAL
+			4 - IFNOTLESS
+	FUNC byte:table byte:id byte:result_table byte:result_id byte:arg_amount [byte:type] [anytype:value] [byte:type] [anytype:value]
+	BLOCKSTART
+	BLOCKEND
+	BLOCKFORWARD
+	BLOCKBACK
+	JUMPSTORE
+	JUMPBACK
+	JUMPTO interger:line
