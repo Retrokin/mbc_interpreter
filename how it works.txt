@@ -10,22 +10,25 @@ Specifications:
 	Byte by Byte reader
 	Stores code in chunks
 	Table 0 are block values
+	Table 254 are pointers; When called they will instead get the values they point to
 	Table 255 are used for function arguments
 	Ids 1-9,100-255 - Interpreter only variables
 	Ids 10-99 - lua accessible variables; ONLY USE IF LUA SHOULD ACCESS OR SLOWDOWNS MAY OCCUR!
 
 Special Tables:
 	0 - Block values
+	253 - Runner
+	254 - Pointers; Format: "table|key"; Example: "001022"
 	255 - Function arguments
 
 Variable Types:
 	0 - nil - 0 bytes
 	1 - variable - 2 bytes; 1 for table and 1 for id
-	2 - table - 0 bytes; technically one for declaring type; creates an empty table
+	2 - table - 0 bytes; creates an empty table
 	3 - function - can only be set in from lua
-	4 - number - 4 bytes 				--is a value that is only a decimal
-	5 - string - length + 1 byte (last byte is null)
-	6 - false_boolean - 0 byte
+	4 - number - 4 bytes; is a value that is only a decimal
+	5 - string - length + 1 byte (last byte is 0)
+	6 - false_boolean - 0 bytes
 	7 - true_boolean - 0 bytes
 	8 - byte - 1 byte
 	9 - interger - 2 bytes
@@ -33,20 +36,19 @@ Variable Types:
 	
 OPCODES:
 	NOP
-	VAR byte:table byte:id byte:operation byte:type anytype:value 				--if table is 0 (registers) then id values 201+ are function specific, and change based on which function the code is within
+	VAR byte:table byte:id byte:operation byte:type anytype:value
 	Operations:
 			0 - SET
 			1 - ADD
 			2 - SUB
 			3 - MUL
 			4 - DIV
-			5 - CONCAT 				--combines two strings together
+			5 - CONCAT 				--combines two strings together; will convert value to string
 			6 - IFEQUAL
 			7 - IFLESS
 			8 - IFLESSEQUAL
 			9 - IFFALSE
 			A - SETTABLE
-	LUANAME byte:table byte:id string:name					--renames a lua variable's key to name .. "_" .. id
 	FUNC byte:table byte:id byte:result_table
 	IF byte:table byte:id interger:true_jumpto interger:false_jumpto
 	BLOCKSTART byte:offset
@@ -56,4 +58,7 @@ OPCODES:
 	JUMPSTORE
 	JUMPBACK
 	JUMPTO interger:byte
+
+Removed:
+	LUANAME byte:table byte:id string:name			--renames a lua variable's key to name .. "_" .. id
 	DEBUGPRINT byte:table byte:id				--printh the value of the variable

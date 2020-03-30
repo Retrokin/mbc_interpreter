@@ -46,6 +46,7 @@ function mbc_runner:init()
 	for i=0,255 do
 		self.var[i]={}
 	end
+	self.var[253]=self
 end
 
 function mbc_runner:access(t,id)
@@ -53,18 +54,22 @@ function mbc_runner:access(t,id)
 end
 
 function mbc_runner:getkey(t,id)
-	if t==1 then					--block variables
-		return self.boff+id
+	if t==0 then					--block variables
+		return t,self.boff+id
+	elseif t==254 then
+		local v=self.var[t][id]
+		return self:getkey(tonumber(sub(v,1,3)),tonumber(sub(v,4,6)))
 	elseif id>9 and id<100 then
 		for k,v in pairs(self.var[t]) do
-			if sub(k,#k-1,#k)==id then return k end
+			if sub(k,#k-1,#k)==id then return t,k end
 		end
 	end
-	return id
+	return t,id
 end
 
 function mbc_runner:getvar(t,id)
-	return self.var[t][self:getkey(t,id)]
+	t,id=self:getkey(t,id)
+	return self.var[t][id]
 end
 
 function mbc_runner:compile(c,p,l)
@@ -106,7 +111,7 @@ function mbc_runner:run(c)
 			return vt[vks]/vv
 		end,
 		function()		--CONCAT
-			return vt[vks] .. vv
+			return vt[vks] .. tostr(vv)
 		end,
 		function()		--IFEQUAL
 			return vt[vks]==vv
@@ -129,16 +134,17 @@ function mbc_runner:run(c)
 		function(self) 					--VAR
 			local ad
 			vv,ad=_gv(p+4)
-			vt,vks=self.var[c[p1]],self:getkey(c[p1],c[p2])
+			vt,vks=self:getkey(c[p1],c[p2])
 			if _c1[c[p3]] then t[ks]=_c1[c[p3]]()
 			else error("unknown operation #" .. c[p3] .. " for opcode var; byte #" .. p) end
-			return ad
+			return ad+3
 		end,
-		function(self)					--LUANAME
-			local s,ad=_gv(p3,6)
-			t[c[p2]]=s .. "_" .. c[c[p2]]
-			return ad
-		end,
+		--function(self)					--LUANAME
+		--	local s,ad=_gv(p+3,5)
+		--	local vt,vks=self:getkey(c[p1],c[p2])
+		--	self.var[vt][vks]=s .. "_" .. vks
+		--	return ad+2
+		--end,
 		function(self)					--FUNC
 			self.var[c[p3]]=self:getvar(c[p1],c[p2])(tbl_iunpack(self.var[255]))
 			return 4
@@ -182,11 +188,12 @@ function mbc_runner:run(c)
 		function(self)				--JUMPTO
 			p=_gv(p1,9)
 			return 2
-		end,
-		function()					--DEBUGPRINT
-			printh("table #" c[p1] .. " key["  .. self:getkey(c[p1],c[p2]) .. "]=" .. tostr(_gv(p1,1)))
-			return 2
 		end
+		--function()					--DEBUGPRINT
+		--	local t,id=self:getkey(c[p1],c[p2])
+		--	printh("table #" t .. " key["  .. id .. "]=" .. tostr(_gv(p1,1)))
+		--	return 2
+		--end
 	}
 
 	while p<=#c do
