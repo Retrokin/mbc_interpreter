@@ -8,7 +8,7 @@ mbc_genvar={
 	function()					--TABLE
 		return {},0
 	end,
-	function(c,p,self)			--FUNCTION
+	function()			--FUNCTION
 	end,
 	function(c,p)			--NUMBER
 		return c[p]+c[p+1]*256+(c[p+2]+c[p+3]*256)/65536,4
@@ -39,9 +39,7 @@ mbc_genvar={
 }
 
 
-mbc_runner=cwi:new{
-	--code={}
-}
+mbc_runner=cwi:new{}
 
 function mbc_runner:init()
 	self.code,self.var={},{}
@@ -78,73 +76,80 @@ end
 
 function mbc_runner:run(c)
 	c,self.boff,self.bptr=self.code[c],0,{}
-	local p,jmp=1,{}
+	local p,jmp,vt,vks,vv,p1,p2,p3=1,{}
 
 	local function _gv(p,t)
+		local ad=0
 		if not t then
 			t=p
-			p+=1
+			ad=1
 		end
-		if mbc_genvar[t] then return mbc_genvar[t](c,p,self)
+		if mbc_genvar[t] then
+			local r1,r2=mbc_genvar[t](c,p+ad,self)
+			return r1,r2+ad
 		else error("no variable type #" .. t .. "; byte #" .. p) end
 	end
 	local _c1={ 			--a subset of commands for VAR
-		function(t,ks,v)		--SET
-			t[ks]=v
+		function()		--SET
+			return vv
 		end,
-		function(t,ks,v)		--ADD
-			t[ks]=t[ks]+v
+		function()		--ADD
+			return vt[vks]+vv
 		end,
-		function(t,ks,v)		--SUB
-			t[ks]=t[ks]-v
+		function()		--SUB
+			return vt[vks]-vv
 		end,
-		function(t,ks,v)		--MUL
-			t[ks]=t[ks]*v
+		function()		--MUL
+			return vt[vks]*vv
 		end,
-		function(t,ks,v)		--DIV
-			t[ks]=t[ks]/v
+		function()		--DIV
+			return vt[vks]/vv
 		end,
-		function(t,ks,v)		--CONCAT
-			t[ks]=t[ks] .. v
+		function()		--CONCAT
+			return vt[vks] .. vv
 		end,
-		function(t,ks,v)		--IFEQUAL
-			t[ks]=t[ks]==v
+		function()		--IFEQUAL
+			return vt[vks]==vv
 		end,
-		function(t,ks,v)		--IFLESS
-			t[ks]=t[ks]<v
+		function()		--IFLESS
+			return vt[vks]<vv
 		end,
-		function(t,ks,v)		--IFLESSEQUAL
-			t[ks]=t[ks]<=v
+		function()
+			return vt[vks]<=vv
 		end,
-		function(t,ks,v)		--SETTABLE
-			t=v
+		function()		--IFFALSE
+			return vt[vks]==false
+		end,
+		function()		--SETTABLE
+			vt=vv
+			return vt[vks]
 		end
 	}
 	local _c={							--all code commands
 		function(self) 					--VAR
-			local v,ad=_gv(p+4)
-			local t,ks=self.var[c[p+1]],self:getkey(c[p+1],c[p+2])
-			if _c1[c[p+3]] then _c1[c[p+3]](t,ks,v)
-			else error("unknown operation #" .. c[p+3] .. " for opcode var; byte #" .. p) end
+			local ad
+			vv,ad=_gv(p+4)
+			vt,vks=self.var[c[p1]],self:getkey(c[p1],c[p2])
+			if _c1[c[p3]] then t[ks]=_c1[c[p3]]()
+			else error("unknown operation #" .. c[p3] .. " for opcode var; byte #" .. p) end
 			return ad
 		end,
 		function(self)					--LUANAME
-			local s,ad=_gv(p+3,6)
-			t[c[p+2]]=s .. "_" .. c[c[p+2]]
+			local s,ad=_gv(p3,6)
+			t[c[p2]]=s .. "_" .. c[c[p2]]
 			return ad
 		end,
 		function(self)					--FUNC
-			local t,rk=_gv(p+1,1),self:getkey(c[p+3],c[p+4])
-			self.var[c[p+3]][rk](tbl_iunpack(self.var[255]))
+			self.var[c[p3]]=self:getvar(c[p1],c[p2])(tbl_iunpack(self.var[255]))
 			return 4
 		end,
 		function()						--IF
-			if self:getvar(c[p+1],c[p+2]) then p=_gv(p+3,9)
+			if self:getvar(c[p1],c[p2]) then p=_gv(p3,9)
 			else p=_gv(p+5,9) end
 			return 6
 		end,
 		function()				--BLOCKSTART
-			local v=_gv(p+1,8)
+			local v=_gv(p1,8)
 			add(self.bptr,v)
 			self.boff+=v
 			return 1
@@ -155,17 +160,17 @@ function mbc_runner:run(c)
 			return 0
 		end,
 		function()				--BLOCKFORWARD
-			local v=_gv(p+1,8)
+			local v=_gv(p1,8)
 			self.boff+=self.bptr[#self.bptr-v]
 			return 1
 		end,
 		function()				--BLOCKBACK
-			local v=_gv(p+1,8)
+			local v=_gv(p1,8)
 			self.boff-=self.bptr[#self.bptr-v]
 			return 1
 		end,
 		function()				--JUMPSTORE
-			add(jmp,p+1)
+			add(jmp,p1)
 			return 0
 		end,
 		function()				--JUMPBACK
@@ -175,20 +180,21 @@ function mbc_runner:run(c)
 			return 0
 		end,
 		function(self)				--JUMPTO
-			p=_gv(p+1,9)
+			p=_gv(p1,9)
 			return 2
 		end,
 		function()					--DEBUGPRINT
-			printh("table #" c[p+1] .. " key["  .. self:getkey(p+1,p+2) .. "]=" .. tostr(_gv(p+1,1)))
+			printh("table #" c[p1] .. " key["  .. self:getkey(c[p1],c[p2]) .. "]=" .. tostr(_gv(p1,1)))
 			return 2
 		end
 	}
 
 	while p<=#c do
+		p1,p2,p3=p+1,p+2,p+3
 		local t=self.var[c[p+1]]
-		if _c[c[p]] then
+		if c[p]~=0 and _c[c[p]] then
 			local ad=_c[c[p]](self)
 			p+=ad+1
-		else error("unknown opbyte #" .. c[p] .. "; byte #" .. p) end
+		else error("unknown opcode #" .. c[p] .. "; byte #" .. p) end
 	end
 end

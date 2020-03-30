@@ -25,14 +25,14 @@ Variable Types:
 	3 - function - can only be set in from lua
 	4 - number - 4 bytes 				--is a value that is only a decimal
 	5 - string - length + 1 byte (last byte is null)
-	6 - false boolean - 0 byte
-	7 - true boolean - 0 bytes
+	6 - false_boolean - 0 byte
+	7 - true_boolean - 0 bytes
 	8 - byte - 1 byte
 	9 - interger - 2 bytes
 	A - tableref - 1 byte - table from self.var
 	
 OPCODES:
-	NULL
+	NOP
 	VAR byte:table byte:id byte:operation byte:type anytype:value 				--if table is 0 (registers) then id values 201+ are function specific, and change based on which function the code is within
 	Operations:
 			0 - SET
@@ -44,15 +44,16 @@ OPCODES:
 			6 - IFEQUAL
 			7 - IFLESS
 			8 - IFLESSEQUAL
-			9 - SETTABLE
+			9 - IFFALSE
+			A - SETTABLE
 	LUANAME byte:table byte:id string:name					--renames a lua variable's key to name .. "_" .. id
-	FUNC byte:table byte:id byte:result_table byte:result_id
+	FUNC byte:table byte:id byte:result_table
 	IF byte:table byte:id interger:true_jumpto interger:false_jumpto
 	BLOCKSTART byte:offset
 	BLOCKEND
-	BLOCKFORWARD byte:
-	BLOCKBACK
+	BLOCKFORWARD byte:block
+	BLOCKBACK byte:block
 	JUMPSTORE
 	JUMPBACK
-	JUMPTO interger:line
+	JUMPTO interger:byte
 	DEBUGPRINT byte:table byte:id				--printh the value of the variable
